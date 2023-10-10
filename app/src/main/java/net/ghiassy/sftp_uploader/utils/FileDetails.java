@@ -7,13 +7,9 @@ import java.io.IOException;
 
 public class FileDetails {
 
-    public static String getHumanReadableFileSize(@NonNull File filename) throws IOException {
+    public static String getHumanReadableFileSize(@NonNull long fileSize) {
 
-        if(!filename.exists())
-        {
-            throw new IOException("File not found!");
-        }
-        long size = filename.length();
+        long size = fileSize;
         if (size <= 0) return "0";
         final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));

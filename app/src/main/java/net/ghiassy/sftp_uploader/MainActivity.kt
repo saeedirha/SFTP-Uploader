@@ -1,6 +1,5 @@
 package net.ghiassy.sftp_uploader
 
-import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -9,14 +8,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.MobileAds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -33,9 +28,10 @@ import net.ghiassy.sftp_uploader.utils.ConvertObject
 import net.ghiassy.sftp_uploader.utils.EncryptedServerConfig
 import net.ghiassy.sftp_uploader.utils.SFTPUploader
 import java.io.BufferedReader
-import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileReader
+import java.io.IOException
+import java.io.InputStreamReader
 
 class MainActivity : AppCompatActivity() {
 
@@ -77,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        selfCheckPermission()
+
 
         //Google ads
         MobileAds.initialize(this) {}
@@ -122,7 +118,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.fbtUpload.setOnClickListener {
-            requestStoragePermissionAndUpload()
+
+            startFileUpload()
         }
     }
 
@@ -157,19 +154,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestStoragePermissionAndUpload() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            // Permission is already granted, upload the file
-            startFileUpload()
-        } else {
-            // Permission is not granted, request it
-            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-    }
 
     private fun startFileUpload() {
         val serverList = sharedViewModel.data.value
@@ -200,15 +184,21 @@ class MainActivity : AppCompatActivity() {
                 logSharedViewModel.appendText("Uploading to ${server.host} ...\n")
                 uploadProgressShareModel.updateText("Uploading to ${server.host} ...")
                 delay(3000L)
-                //printFileContent(filesList[0].filename)
-                SFTPUploader(
-                    applicationContext,
-                    server.host,
-                    server.port,
-                    server.username,
-                    server.password,
-                    filesList[0].filename
-                ).uploadFile(this@MainActivity, uploadProgressShareModel)
+
+                val inputStream = filesList[0]
+                    ?.let { it1 -> contentResolver.openInputStream(it1.getFileUri()) }
+                if (inputStream != null) {
+                    SFTPUploader(
+                        applicationContext,
+                        server.host,
+                        server.port,
+                        server.username,
+                        server.password,
+                        filesList[0].getFileName(),
+                        filesList[0].getFileSizeLong(),
+                        inputStream
+                    ).uploadFile(this@MainActivity, uploadProgressShareModel)
+                }
 
             }
             if(uploadProgressShareModel.isError.value == true) {
@@ -221,49 +211,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun selfCheckPermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            // Permission is already granted
-        } else {
-            // Permission is not granted
-            //Toast.makeText(this, "Permission is not granted", Toast.LENGTH_SHORT).show()
-            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-    }
-    private fun printFileContent(filePath: String) {
-        try {
-            val file = File(filePath)
-            if (file.exists()) {
-                val fileReader = FileReader(file)
-                val bufferedReader = BufferedReader(fileReader)
-
-                val stringBuilder = StringBuilder()
-
-                var line: String?
-                while (bufferedReader.readLine().also { line = it } != null) {
-                    stringBuilder.append(line).append('\n')
-                }
-
-                val fileContent = stringBuilder.toString()
-                Log.d("FileContent", fileContent)
-
-                bufferedReader.close()
-                fileReader.close()
-            } else {
-                Log.e("FileNotFound", "File not found: $filePath")
-            }
-        } catch (e: FileNotFoundException) {
-            e.printStackTrace()
-            Log.e("FileNotFoundException", "File not found: $filePath")
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Log.e("Exception", "Error reading file: $filePath")
-        }
-    }
 
     private fun saveSettings() {
         val currentList = sharedViewModel.data.value
@@ -273,5 +220,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkForActiveServer(servers: List<ServerModel>): Boolean {
         return servers.any { it.isEnabled }
+    }
+
+    private fun readContent(inputStream: java.io.InputStream) {
+        val reader = BufferedReader(InputStreamReader(inputStream))
+        val stringBuilder = StringBuilder()
+        try {
+            var line: String? = reader.readLine()
+            while (line != null) {
+                stringBuilder.append(line)
+                stringBuilder.append("\n")
+                line = reader.readLine()
+            }
+
+        } catch (e: IOException) {
+            e.printStackTrace()
+        } finally {
+            reader.close()
+        }
+
+        val content = stringBuilder.toString()
+        Log.d(TAG , content)
     }
 }

@@ -26,7 +26,7 @@ class FilesListAdapter(
         var canAdd = true
 
         try {
-            holder.fileName.text = itemFilesModel.filename
+            holder.fileName.text = itemFilesModel.getFileName()
             holder.fileSize.text = itemFilesModel.getFileSize()
 
         } catch (e: Exception) {

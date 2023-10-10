@@ -49,10 +49,9 @@ class MainFragment : Fragment() {
                     while (currentItem < count!!) {
                         val fileUri: Uri? = data.clipData?.getItemAt(currentItem)?.uri
                         val path: String = FileUtils.getPath(requireContext(), fileUri)
-                        mList.add(ItemFilesModel(path))
+                        fileUri?.let { ItemFilesModel(requireContext(), it) }?.let { mList.add(it) }
                         filesSharedViewModel.updateList(mList)
-                        logSharedViewModel.appendText("Added file: $path\n")
-                        Log.i("=====??=====>", path)
+                        logSharedViewModel.appendText("Added file: ${mList.last().getFileName()}\n")
                         currentItem++
                     }
                     logSharedViewModel.appendText("----------------------------\n")
@@ -60,9 +59,9 @@ class MainFragment : Fragment() {
                 } else if (data?.data != null) {
                     try {
                         val path = FileUtils.getPath(requireContext(), data.data)
-                        mList.add(ItemFilesModel(path))
+                        mList.add(ItemFilesModel(requireContext(), data.data!!))
                         filesSharedViewModel.updateList(mList)
-                        logSharedViewModel.appendText("Added file: $path\n")
+                        logSharedViewModel.appendText("Added file: ${mList.last().getFileName()}\n")
                         logSharedViewModel.appendText("----------------------------\n")
                     } catch (e: NullPointerException) {
                         Toast.makeText(
@@ -164,7 +163,7 @@ class MainFragment : Fragment() {
                 //TODO: possible problem here
                 uploadProgressShareModel.reset()
                 Log.d(TAG,"Value of done: $it")
-                logSharedViewModel.appendText("File ${mList.get(0).filename} uploaded successfully\n")
+                logSharedViewModel.appendText("File ${mList[0].getFileName()} uploaded successfully\n")
                 adapter.deleteItem(0)
             }
         }
@@ -174,7 +173,6 @@ class MainFragment : Fragment() {
 
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-            intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             intent.action = Intent.ACTION_GET_CONTENT
             intent.type = "*/*"

@@ -37,7 +37,7 @@ public class FileDetailsUnitTest {
             {
                 e.printStackTrace();
             }
-            String result = FileDetails.getHumanReadableFileSize(tempFile); // 2.10 MB
+            String result = FileDetails.getHumanReadableFileSize(tempFile.length()); // 2.10 MB
             assertEquals("2.10 MB", result);
 
 

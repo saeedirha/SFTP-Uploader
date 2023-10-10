@@ -23,7 +23,9 @@ class SFTPUploader(
     private val port: Int,
     private val username: String,
     private val password: String,
-    private val filePath: String
+    private val fileName: String,
+    private val fileSize: Long,
+    private val fileInputStream: java.io.InputStream
 ) {
 
     private val TAG = "FTPUploader"
@@ -37,8 +39,6 @@ class SFTPUploader(
     ) {
         withContext(Dispatchers.IO) {
             try {
-
-                val file = File(filePath)
 
                 val jsch = JSch()
                 val session: Session = jsch.getSession(username, hostname, port)
@@ -61,7 +61,7 @@ class SFTPUploader(
 
                     override fun count(i: Long): Boolean {
                         countBytes += i
-                        percent = (countBytes * 100 / file.length()).toInt()
+                        percent = (countBytes * 100 / fileSize).toInt()
                         activity.runOnUiThread {
                             uploadProgressShareModel.updateProgress(percent)
                             //Log.d(TAG, "Uploaded $percent%")
@@ -73,13 +73,13 @@ class SFTPUploader(
                         activity.runOnUiThread {
                             Log.d(TAG, "Upload finished")
                             Log.d(TAG, "Uploaded $countBytes bytes")
-                            Log.d(TAG, "File size: ${file.length()}")
+                            Log.d(TAG, "File size: $fileSize")
                             Log.d(TAG,"Percent: $percent")
                         }
                     }
                 }
 
-                channelSftp.put(FileInputStream(file), file.name, progress)
+                channelSftp.put(fileInputStream, fileName, progress)
                 channelSftp.exit()
                 session.disconnect()
                 activity.runOnUiThread {
